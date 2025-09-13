@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filtreur GeoJSON - Conservation trajets > 15km</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .description {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            font-size: 1.1em;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone:hover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .drop-zone.dragover {
+            border-color: #5a67d8;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            transform: scale(1.02);
+        }
+
+        .drop-icon {
+            font-size: 4em;
+            color: #667eea;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .drop-text {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .drop-subtext {
+            color: #666;
+            font-size: 1em;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .stats {
+            margin: 30px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 15px;
+            display: none;
+        }
+
+        .stats h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-value.positive {
+            color: #38a169;
+        }
+
+        .stat-value.negative {
+            color: #e53e3e;
+        }
+
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .download-btn {
+            display: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 20px auto;
+            min-width: 200px;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .error {
+            color: #e53e3e;
+            background: rgba(229, 62, 62, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #e53e3e;
+            display: none;
+        }
+
+        .success {
+            color: #38a169;
+            background: rgba(56, 161, 105, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #38a169;
+            display: none;
+        }
+
+        .warning {
+            color: #d69e2e;
+            background: rgba(214, 158, 46, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #d69e2e;
+            display: none;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .processing {
+            animation: pulse 1.5s infinite;
+        }
+
+        .distance-info {
+            background: linear-gradient(135deg, rgba(56, 161, 105, 0.1) 0%, rgba(56, 161, 105, 0.05) 100%);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #38a169;
+        }
+
+        .distance-info h4 {
+            color: #38a169;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .distance-range {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚴‍♂️ Filtreur GeoJSON LineString</h1>
+        <div class="description">
+            Glissez votre fichier GeoJSON (LineString) pour <strong>conserver uniquement</strong> les trajets de plus de 15 km. 
+            Idéal pour analyser les trajets longue distance de vos employés.
+        </div>
+
+        <div class="highlight">
+            <strong>📏 Filtrage inversé :</strong> Ce filtre garde les trajets > 15km et supprime ceux ≤ 15km
+        </div>
+
+        <div class="drop-zone" id="dropZone">
+            <div class="drop-icon">🗺️</div>
+            <div class="drop-text">Glissez votre fichier GeoJSON LineString ici</div>
+            <div class="drop-subtext">ou cliquez pour sélectionner un fichier</div>
+            <input type="file" id="fileInput" class="file-input" accept=".geojson,.json">
+        </div>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="error" id="error"></div>
+        <div class="warning" id="warning"></div>
+        <div class="success" id="success"></div>
+
+        <div class="distance-info" id="distanceInfo" style="display: none;">
+            <h4>📊 Distribution des distances</h4>
+            <div class="distance-range">
+                <span>Distance min :</span>
+                <span id="minDistance">-</span>
+            </div>
+            <div class="distance-range">
+                <span>Distance max :</span>
+                <span id="maxDistance">-</span>
+            </div>
+            <div class="distance-range">
+                <span>Distance moyenne :</span>
+                <span id="avgDistance">-</span>
+            </div>
+        </div>
+
+        <div class="stats" id="stats">
+            <h3>📈 Résultats du filtrage</h3>
+            <div class="stat-item">
+                <span class="stat-label">Trajets d'origine :</span>
+                <span class="stat-value" id="originalCount">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Trajets conservés (> 15km) :</span>
+                <span class="stat-value positive" id="keptCount">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Trajets supprimés (≤ 15km) :</span>
+                <span class="stat-value negative" id="removedCount">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Pourcentage conservé :</span>
+                <span class="stat-value" id="keptPercentage">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Réduction de taille :</span>
+                <span class="stat-value" id="sizeReduction">-</span>
+            </div>
+        </div>
+
+        <button class="download-btn" id="downloadBtn">📥 Télécharger trajets > 15km</button>
+    </div>
+
+    <script>
+        let filteredData = null;
+        let originalFilename = '';
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const progress = document.getElementById('progress');
+        const progressBar = document.getElementById('progressBar');
+        const stats = document.getElementById('stats');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const error = document.getElementById('error');
+        const success = document.getElementById('success');
+        const warning = document.getElementById('warning');
+        const distanceInfo = document.getElementById('distanceInfo');
+
+        // Gestionnaires pour la zone de glisser-déposer
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', handleDragOver);
+        dropZone.addEventListener('drop', handleDrop);
+        dropZone.addEventListener('dragenter', handleDragEnter);
+        dropZone.addEventListener('dragleave', handleDragLeave);
+        fileInput.addEventListener('change', handleFileSelect);
+        downloadBtn.addEventListener('click', downloadFilteredFile);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            if (!dropZone.contains(e.relatedTarget)) {
+                dropZone.classList.remove('dragover');
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                processFile(e.target.files[0]);
+            }
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+            success.style.display = 'none';
+            warning.style.display = 'none';
+        }
+
+        function showWarning(message) {
+            warning.textContent = message;
+            warning.style.display = 'block';
+            error.style.display = 'none';
+            success.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            success.textContent = message;
+            success.style.display = 'block';
+            error.style.display = 'none';
+            warning.style.display = 'none';
+        }
+
+        function hideMessages() {
+            error.style.display = 'none';
+            success.style.display = 'none';
+            warning.style.display = 'none';
+        }
+
+        function updateProgress(percent) {
+            progressBar.style.width = percent + '%';
+        }
+
+        function showProgress() {
+            progress.style.display = 'block';
+            dropZone.classList.add('processing');
+        }
+
+        function hideProgress() {
+            progress.style.display = 'none';
+            dropZone.classList.remove('processing');
+            updateProgress(0);
+        }
+
+        function formatDistance(km) {
+            return km.toFixed(2) + ' km';
+        }
+
+        function calculateDistanceStats(features) {
+            const distances = features
+                .filter(f => f.properties && f.properties.distance_km !== undefined)
+                .map(f => f.properties.distance_km);
+            
+            if (distances.length === 0) return null;
+            
+            const min = Math.min(...distances);
+            const max = Math.max(...distances);
+            const avg = distances.reduce((a, b) => a + b, 0) / distances.length;
+            
+            return { min, max, avg };
+        }
+
+        async function processFile(file) {
+            hideMessages();
+            showProgress();
+            
+            originalFilename = file.name;
+            
+            // Vérifier le type de fichier
+            if (!file.name.toLowerCase().endsWith('.geojson') && !file.name.toLowerCase().endsWith('.json')) {
+                showError('Veuillez sélectionner un fichier GeoJSON (.geojson ou .json)');
+                hideProgress();
+                return;
+            }
+
+            try {
+                updateProgress(10);
+                
+                // Lire le fichier
+                const text = await file.text();
+                updateProgress(30);
+
+                // Parser le JSON
+                let geoData;
+                try {
+                    geoData = JSON.parse(text);
+                } catch (e) {
+                    showError('Erreur lors de l\'analyse du fichier JSON. Vérifiez que le fichier est valide.');
+                    hideProgress();
+                    return;
+                }
+
+                updateProgress(50);
+
+                // Vérifier la structure GeoJSON
+                if (!geoData.type || geoData.type !== 'FeatureCollection' || !geoData.features) {
+                    showError('Le fichier ne semble pas être un GeoJSON valide avec une FeatureCollection.');
+                    hideProgress();
+                    return;
+                }
+
+                updateProgress(60);
+
+                // Calculer les statistiques de distance avant filtrage
+                const distanceStats = calculateDistanceStats(geoData.features);
+                if (distanceStats) {
+                    document.getElementById('minDistance').textContent = formatDistance(distanceStats.min);
+                    document.getElementById('maxDistance').textContent = formatDistance(distanceStats.max);
+                    document.getElementById('avgDistance').textContent = formatDistance(distanceStats.avg);
+                    distanceInfo.style.display = 'block';
+                }
+
+                // Filtrer les features - GARDER celles > 15km
+                const originalCount = geoData.features.length;
+                const keptFeatures = [];
+                
+                let processedCount = 0;
+                let featuresWithoutDistance = 0;
+
+                for (const feature of geoData.features) {
+                    // Vérifier si la feature a une distance_km > 15
+                    if (feature.properties && 
+                        feature.properties.distance_km !== undefined) {
+                        
+                        if (feature.properties.distance_km > 15) {
+                            keptFeatures.push(feature);
+                        }
+                    } else {
+                        featuresWithoutDistance++;
+                        // Si pas de distance_km, on peut choisir de l'ignorer ou de la garder
+                        // Ici on l'ignore (ne la garde pas)
+                    }
+                    
+                    processedCount++;
+                    if (processedCount % 1000 === 0) {
+                        updateProgress(60 + (processedCount / originalCount) * 30);
+                        // Permettre au navigateur de respirer
+                        await new Promise(resolve => setTimeout(resolve, 1));
+                    }
+                }
+
+                updateProgress(90);
+
+                // Afficher un avertissement s'il y a des features sans distance
+                if (featuresWithoutDistance > 0) {
+                    showWarning(`Attention: ${featuresWithoutDistance} trajets n'avaient pas de propriété distance_km et ont été ignorés.`);
+                }
+
+                // Créer le nouveau GeoJSON filtré
+                filteredData = {
+                    ...geoData,
+                    features: keptFeatures
+                };
+
+                updateProgress(100);
+
+                // Calculer les statistiques
+                const keptCount = keptFeatures.length;
+                const removedCount = originalCount - keptCount - featuresWithoutDistance;
+                const keptPercentage = ((keptCount / (originalCount - featuresWithoutDistance)) * 100).toFixed(1);
+                
+                const originalSize = new Blob([text]).size;
+                const filteredSize = new Blob([JSON.stringify(filteredData)]).size;
+                const sizeReduction = originalSize > filteredSize ? 
+                    ((1 - filteredSize / originalSize) * 100).toFixed(1) : 
+                    (((filteredSize / originalSize) - 1) * 100).toFixed(1);
+
+                // Afficher les statistiques
+                document.getElementById('originalCount').textContent = originalCount.toLocaleString();
+                document.getElementById('keptCount').textContent = keptCount.toLocaleString();
+                document.getElementById('removedCount').textContent = removedCount.toLocaleString();
+                document.getElementById('keptPercentage').textContent = keptPercentage + '%';
+                
+                const sizeReductionElement = document.getElementById('sizeReduction');
+                if (originalSize > filteredSize) {
+                    sizeReductionElement.textContent = '-' + sizeReduction + '%';
+                    sizeReductionElement.className = 'stat-value positive';
+                } else {
+                    sizeReductionElement.textContent = '+' + sizeReduction + '%';
+                    sizeReductionElement.className = 'stat-value negative';
+                }
+
+                stats.style.display = 'block';
+                downloadBtn.style.display = 'block';
+
+                if (keptCount === 0) {
+                    showWarning('Aucun trajet de plus de 15km trouvé dans le fichier !');
+                } else {
+                    showSuccess(`Filtrage terminé ! ${keptCount.toLocaleString()} trajets de plus de 15km ont été conservés.`);
+                }
+                
+                setTimeout(hideProgress, 500);
+
+            } catch (error) {
+                console.error('Erreur lors du traitement:', error);
+                showError('Une erreur s\'est produite lors du traitement du fichier. Vérifiez que le fichier est valide.');
+                hideProgress();
+            }
+        }
+
+        function downloadFilteredFile() {
+            if (!filteredData) {
+                showError('Aucune donnée filtrée disponible.');
+                return;
+            }
+
+            if (filteredData.features.length === 0) {
+                showWarning('Le fichier filtré est vide (aucun trajet > 15km). Téléchargement annulé.');
+                return;
+            }
+
+            const jsonString = JSON.stringify(filteredData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = originalFilename.replace('.geojson', '_long_trips.geojson').replace('.json', '_long_trips.geojson');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showSuccess('Fichier des trajets longs téléchargé avec succès !');
+        }
+    </script>
+</body>
+</html>
