@@ -169,6 +169,15 @@
             border-radius: 4px;
         }
 
+        .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
         .download-btn {
             display: none;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -182,13 +191,34 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin: 20px auto;
+            margin: 0; /* Changed from margin: 20px auto */
             min-width: 200px;
         }
 
         .download-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .next-step-btn {
+            display: none;
+            background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-decoration: none;
+        }
+
+        .next-step-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(56, 161, 105, 0.3);
         }
 
         .error {
@@ -320,7 +350,10 @@
             </div>
         </div>
 
-        <button class="download-btn" id="downloadBtn">📥 Télécharger trajets > 15km</button>
+        <div class="button-container">
+            <button class="download-btn" id="downloadBtn">📥 Télécharger trajets > 15km</button>
+            <a href="https://mariusbrion.github.io/analysecovoit/" target="_blank" class="next-step-btn" id="nextStepBtn">Étape Suivante &rarr;</a>
+        </div>
     </div>
 
     <script>
@@ -333,6 +366,7 @@
         const progressBar = document.getElementById('progressBar');
         const stats = document.getElementById('stats');
         const downloadBtn = document.getElementById('downloadBtn');
+        const nextStepBtn = document.getElementById('nextStepBtn');
         const error = document.getElementById('error');
         const success = document.getElementById('success');
         const warning = document.getElementById('warning');
@@ -560,6 +594,7 @@
 
                 stats.style.display = 'block';
                 downloadBtn.style.display = 'block';
+                nextStepBtn.style.display = 'inline-block';
 
                 if (keptCount === 0) {
                     showWarning('Aucun trajet de plus de 15km trouvé dans le fichier !');
@@ -604,3 +639,4 @@
     </script>
 </body>
 </html>
+
